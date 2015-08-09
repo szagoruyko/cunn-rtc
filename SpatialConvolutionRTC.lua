@@ -18,21 +18,21 @@ function SpatialConvolution:updateOutput(input)
 
   local batchSize = input:size(1)
 
-  self.output:resize(batchSize, self.nOutputPlane, outputHeight * outputWidth)
+  self.output:resize(batchSize, self.nOutputPlane, outputHeight, outputWidth)
 
   local ones = self.fgradInput
   local columns = self.finput
-  if ones:nDimension() ~= 2 or ones:size(1)*ones:size(2) < outputHeight*outputWidth then
-    ones:resize(outputHeight * outputWidth,1):fill(1)
+  if ones:nDimension() ~= 2 or ones:numel() ~= outputHeight*outputWidth then
+    ones:resize(1,outputHeight * outputWidth):fill(1)
   end
 
   for i=1,batchSize do
-    self.output[i]:t():mm(ones,self.bias:view(1,self.nOutputPlane))
+    local o = self.output[i]:view(self.nOutputPlane,-1)
     columns.nn.im2col(columns, input[i], self:getIm2ColParams())
-    self.output[i]:addmm(self.weight, columns)
+    o:mm(self.bias:view(self.nOutputPlane,1),ones)
+    o:addmm(self.weight, columns)
   end
 
-  self.output = self.output:view(batchSize, self.nOutputPlane, outputHeight, outputWidth)
   return self.output
 end
 
@@ -57,14 +57,12 @@ function SpatialConvolution:accGradParameters(input, gradOutput, scale)
 
   local scale = scale or 1
 
-  local inputWidth   = input:size(4)
-  local inputHeight  = input:size(3)
-  local outputWidth  = (inputWidth + 2*self.padW - self.kW) / self.dW + 1
-  local outputHeight = (inputHeight + 2*self.padH - self.kH) / self.dH + 1
+  local outputWidth  = self.output:size(4)
+  local outputHeight = self.output:size(3)
 
   local ones = self.fgradInput
-  if ones:nDimension() ~= 2 or ones:size(1)*ones:size(2) ~= outputHeight*outputWidth then
-    ones:resize(outputHeight * outputWidth,1):fill(1)
+  if ones:nDimension() ~= 2 or ones:numel() ~= outputHeight*outputWidth then
+    ones:resize(1,outputHeight * outputWidth):fill(1)
   end
 
   local columns = self.finput
