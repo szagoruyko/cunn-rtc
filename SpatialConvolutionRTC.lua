@@ -11,14 +11,10 @@ end
 function SpatialConvolution:updateOutput(input)
   assert(input:nDimension() == 4)
   
-  local inputWidth   = input:size(4)
-  local inputHeight  = input:size(3)
-  local outputWidth  = (inputWidth + 2*self.padW - self.kW) / self.dW + 1
-  local outputHeight = (inputHeight + 2*self.padH - self.kH) / self.dH + 1
+  local outputWidth  = (input:size(4) + 2*self.padW - self.kW) / self.dW + 1
+  local outputHeight = (input:size(3) + 2*self.padH - self.kH) / self.dH + 1
 
-  local batchSize = input:size(1)
-
-  self.output:resize(batchSize, self.nOutputPlane, outputHeight, outputWidth)
+  self.output:resize(input:size(1), self.nOutputPlane, outputHeight, outputWidth)
 
   local ones = self.fgradInput
   local columns = self.finput
@@ -26,7 +22,7 @@ function SpatialConvolution:updateOutput(input)
     ones:resize(1,outputHeight * outputWidth):fill(1)
   end
 
-  for i=1,batchSize do
+  for i=1,input:size(1) do
     local o = self.output[i]:view(self.nOutputPlane,-1)
     columns.nn.im2col(columns, input[i], self:getIm2ColParams())
     o:mm(self.bias:view(self.nOutputPlane,1),ones)
