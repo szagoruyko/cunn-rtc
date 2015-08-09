@@ -94,8 +94,8 @@ function torch.CudaTensor.nn.im2col(dst,src,kW,kH,dW,dH,padW,padH)
 
   local height = src:size(2)
   local width = src:size(3)
-  local height_col = (height + 2 * padH - kH) / dH + 1
-  local width_col = (width + 2 * padW - kW) / dW + 1
+  local height_col = math.floor((height + 2 * padH - kH) / dH) + 1
+  local width_col = math.floor((width + 2 * padW - kW) / dW) + 1
   local n = nInputPlane * height_col * width_col
 
   dst:resize(nInputPlane*kW*kH, height_col*width_col)
@@ -132,8 +132,8 @@ function torch.CudaTensor.nn.col2im(dst,src,kW,kH,dW,dH,padW,padH)
   local height = dst:size(2)
   local width = dst:size(3)
   local nInputPlane = dst:size(1)
-  local height_col = (height + 2 * padH - kH) / dH + 1
-  local width_col = (width + 2 * padW - kW) / dW + 1
+  local height_col = math.floor((height + 2 * padH - kH) / dH) + 1
+  local width_col = math.floor((width + 2 * padW - kW) / dW) + 1
   local n = nInputPlane * height * width
 
   --dst:resize(nInputPlane*kW*kH, height_col*width_col)

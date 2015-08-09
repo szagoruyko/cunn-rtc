@@ -11,8 +11,8 @@ end
 function SpatialConvolution:updateOutput(input)
   assert(input:nDimension() == 4)
   
-  local outputWidth  = (input:size(4) + 2*self.padW - self.kW) / self.dW + 1
-  local outputHeight = (input:size(3) + 2*self.padH - self.kH) / self.dH + 1
+  local outputWidth  = math.floor((input:size(4) + 2*self.padW - self.kW) / self.dW) + 1
+  local outputHeight = math.floor((input:size(3) + 2*self.padH - self.kH) / self.dH) + 1
 
   self.output:resize(input:size(1), self.nOutputPlane, outputHeight, outputWidth)
 
