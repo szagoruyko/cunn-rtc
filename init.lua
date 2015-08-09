@@ -1,5 +1,5 @@
 require 'cutorch-rtc'
-require 'nn'
+require 'cunn'
 include 'Pointwise.lua'
 include 'LeakyReLU.lua'
 include 'im2col.lua'
