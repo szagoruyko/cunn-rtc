@@ -1,4 +1,6 @@
 require 'cutorch-rtc'
-require 'nn'
+require 'cunn'
 include 'Pointwise.lua'
 include 'LeakyReLU.lua'
+include 'im2col.lua'
+include 'SpatialConvolutionRTC.lua'
