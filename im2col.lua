@@ -87,13 +87,9 @@ end
 
 function torch.CudaTensor.nn.im2col(dst,src,kW,kH,dW,dH,padW,padH)
   assert(src:nDimension() == 3)
-  local nInputPlane = src:size(1)
-  if kW == 1 and kH == 1 and dW == 1 and dH == 1 then
-    return src:view(nInputPlane,-1)
-  end
-
   local height = src:size(2)
   local width = src:size(3)
+  local nInputPlane = src:size(1)
   local height_col = math.floor((height + 2 * padH - kH) / dH) + 1
   local width_col = math.floor((width + 2 * padW - kW) / dW) + 1
   local n = nInputPlane * height_col * width_col
