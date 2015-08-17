@@ -22,11 +22,12 @@ function SpatialConvolution:updateOutput(input)
     ones:resize(1,outputHeight * outputWidth):fill(1)
   end
 
+  local o = self.output:view(input:size(1), self.nOutputPlane,-1)
+  local bias = self.bias:view(self.nOutputPlane,1)
+
   for i=1,input:size(1) do
-    local o = self.output[i]:view(self.nOutputPlane,-1)
-    columns.nn.im2col(columns, input[i], self:getIm2ColParams())
-    o:mm(self.bias:view(self.nOutputPlane,1),ones)
-    o:addmm(self.weight, columns)
+    input.nn.im2col(columns, input[i], self:getIm2ColParams())
+    o[i]:mm(bias, ones):addmm(self.weight, columns)
   end
 
   return self.output
@@ -39,11 +40,12 @@ function SpatialConvolution:updateGradInput(input,gradOutput)
   self.gradInput:resizeAs(input)
 
   local columns = self.finput
-  for i=1,input:size(1) do
-    columns:mm(self.weight:t(), gradOutput[i]:view(self.nOutputPlane,-1))
-    columns.nn.col2im(self.gradInput[i], columns, self:getIm2ColParams())
-  end
+  local go = gradOutput:view(input:size(1),self.nOutputPlane,-1)
 
+  for i=1,input:size(1) do
+    columns:mm(self.weight:t(), go[i])
+    input.nn.col2im(self.gradInput[i], columns, self:getIm2ColParams())
+  end
   return self.gradInput
 end
 
@@ -62,11 +64,12 @@ function SpatialConvolution:accGradParameters(input, gradOutput, scale)
   end
 
   local columns = self.finput
+  local go = gradOutput:view(input:size(1), self.nOutputPlane,-1)
+
   for i=1,input:size(1) do
-    local go = gradOutput[i]:view(self.nOutputPlane,-1)
-    columns.nn.im2col(columns, input[i], self:getIm2ColParams())
-    self.gradWeight:addmm(scale, go, columns:t())
-    self.gradBias:addmv(scale, go, ones:view(-1)) 
+    input.nn.im2col(columns, input[i], self:getIm2ColParams())
+    self.gradWeight:addmm(scale, go[i], columns:t())
+    self.gradBias:addmv(scale, go[i], ones:view(-1)) 
   end
 end
 
