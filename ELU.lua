@@ -5,5 +5,5 @@ local bwd = 'gradInput = output > 0 ? gradOutput : gradOutput * (output + %f)'
 
 function ELU:__init(alpha)
   assert(type(alpha) == 'number')
-  parent.__init(self, fwd:format(alpha), bwd:forward(alpha))
+  parent.__init(self, fwd:format(alpha), bwd:format(alpha))
 end
