@@ -1,3 +1,4 @@
+local unfolds = require 'cunn-rtc.im2col'
 local SpatialConvolution, parent = torch.class('nn.SpatialConvolutionRTC','nn.SpatialConvolutionMM')
 
 function SpatialConvolution:__init(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW, padH)
@@ -16,6 +17,8 @@ function SpatialConvolution:updateOutput(input)
 
   self.output:resize(input:size(1), self.nOutputPlane, outputHeight, outputWidth)
 
+  self.fgradInput = self.fgradInput or input.new()
+  self.finput = self.finput or input.new()
   local ones = self.fgradInput
   local columns = self.finput
   if ones:nDimension() ~= 2 or ones:numel() ~= outputHeight*outputWidth then
@@ -26,7 +29,7 @@ function SpatialConvolution:updateOutput(input)
   local bias = self.bias:view(self.nOutputPlane,1)
 
   for i=1,input:size(1) do
-    input.nn.im2col(columns, input[i], self:getIm2ColParams())
+    unfolds.im2col(columns, input[i], self:getIm2ColParams())
     o[i]:mm(bias, ones):addmm(self.weight, columns)
   end
 
@@ -44,7 +47,7 @@ function SpatialConvolution:updateGradInput(input,gradOutput)
 
   for i=1,input:size(1) do
     columns:mm(self.weight:t(), go[i])
-    input.nn.col2im(self.gradInput[i], columns, self:getIm2ColParams())
+    unfolds.col2im(self.gradInput[i], columns, self:getIm2ColParams())
   end
   return self.gradInput
 end
@@ -67,7 +70,7 @@ function SpatialConvolution:accGradParameters(input, gradOutput, scale)
   local go = gradOutput:view(input:size(1), self.nOutputPlane,-1)
 
   for i=1,input:size(1) do
-    input.nn.im2col(columns, input[i], self:getIm2ColParams())
+    unfolds.im2col(columns, input[i], self:getIm2ColParams())
     self.gradWeight:addmm(scale, go[i], columns:t())
     self.gradBias:addmv(scale, go[i], ones:view(-1)) 
   end

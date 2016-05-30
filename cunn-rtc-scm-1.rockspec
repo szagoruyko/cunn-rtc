@@ -16,7 +16,8 @@ description = {
 dependencies = {
    "torch >= 7.0",
    "cutorch-rtc",
-   "nn"
+   "nn",
+   "templet",
 }
 
 build = {

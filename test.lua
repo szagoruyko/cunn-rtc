@@ -2,76 +2,11 @@ require 'cunn-rtc'
 
 local mytester = torch.Tester()
 
-local cunntest = {}
+local cunntest = torch.TestSuite()
 local precision_forward = 1e-4
 local precision_backward = 1e-2
 local times = {}
-local nloop = 1
-
-function cunntest.LeakyReLU_forward()
-   local size = math.random(1,100)
-
-   local tm = {}
-   local title = string.format('LeakyReLU forward %d -> %d', size, size)
-   times[title] = tm
-
-   local input = torch.randn(size):float()
-   local sconv = nn.Threshold(0):float()
-   local groundtruth = sconv:forward(input)
-   local a = torch.Timer()
-   for i = 1,nloop do
-      groundtruth = sconv:forward(input)
-   end
-   tm.cpu = a:time().real
-
-   input = input:cuda()
-   local gconv = nn.LeakyReLU(0):cuda()
-   local rescuda = gconv:forward(input)
-   a:reset()
-   for i = 1,nloop do
-      rescuda = gconv:forward(input)
-   end
-   cutorch.synchronize()
-   tm.gpu = a:time().real
-
-   local error = rescuda:float() - groundtruth
-   mytester:assertlt(error:abs():max(), precision_forward, 'error on state (forward) ')
-end
-
-function cunntest.LeakyReLU_backward()
-   local size = math.random(1,100)
-
-   local tm = {}
-   local title = string.format('LeakyReLU.backward %d -> %d', size, size)
-   times[title] = tm
-
-   local input = torch.randn(size):float()
-   local gradOutput = torch.randn(size):float()
-   local sconv = nn.Threshold(0):float()
-   sconv:forward(input)
-   local groundgrad = sconv:backward(input, gradOutput)
-   local a = torch.Timer()
-   for i = 1,nloop do
-      groundgrad = sconv:backward(input, gradOutput)
-   end
-   tm.cpu = a:time().real
-
-   input = input:cuda()
-   gradOutput = gradOutput:cuda()
-   local gconv = nn.LeakyReLU(0):cuda()
-   gconv:forward(input)
-   local rescuda = gconv:backward(input, gradOutput)
-   a:reset()
-   for i = 1,nloop do
-      rescuda = gconv:backward(input, gradOutput)
-   end
-   cutorch.synchronize()
-   tm.gpu = a:time().real
-
-   local error = rescuda:float() - groundgrad
-
-   mytester:assertlt(error:abs():max(), precision_backward, 'error on state (backward) ')
-end
+local nloop = 100
 
 function cunntest.SpatialConvolution_forward_batch()
    local bs = math.random(1,32)
@@ -149,5 +84,92 @@ function cunntest.SpatialConvolution_backward_batch()
    mytester:assertlt(berror:abs():max(), precision_backward, 'error on bias (backward) ')
 end
 
+function cunntest.BCECriterionRTC_forward()
+  local size = math.random(1,100)
+  size = 256 * 2 * 20 * 28
+  -- local size = math.random(1,100)
+  local input = torch.rand(size):sigmoid()
+  local target = torch.randn(size):gt(0):double()
+
+  local tm = {}
+  local title = string.format('BCECriterionRTC.forward, Size: %d', size)
+  times[title] = tm
+
+  local crit = nn.BCECriterionRTC()
+  local groundtruth= crit:forward(input, target)
+  local a = torch.Timer()
+  for i = 1,nloop do
+     groundtruth = crit:forward(input, target)
+  end
+  tm.cpu = a:time().real
+
+  input = input:cuda()
+  target = target:cuda()
+  local g_crit = nn.BCECriterionRTC():cuda()
+  local rescuda = g_crit:forward(input, target)
+  a:reset()
+  for i = 1,nloop do
+     rescuda = g_crit:forward(input, target)
+  end
+  cutorch.synchronize()
+  tm.gpu = a:time().real
+  local errorVal = rescuda - groundtruth
+  mytester:assertlt(errorVal, precision_forward, 'error on state (forward) ')
+end
+
+
+function cunntest.BCECriterionRTC_backward()
+   local size = math.random(1,100)
+   local size = math.random(1,100)
+   size = 256 * 2 * 20 * 28
+   -- local size = math.random(1,100)
+   local input = torch.rand(size):sigmoid()
+   local target = torch.randn(size):gt(0):double()
+
+   local tm = {}
+   local title = string.format('BCECriterionRTC.backward, Size %d', size)
+   times[title] = tm
+
+   local crit = nn.BCECriterionRTC()
+   crit:forward(input, target)
+   local groundgrad = crit:backward(input, target)
+   local a = torch.Timer()
+   for i = 1,nloop do
+      groundgrad = crit:backward(input, target)
+   end
+   tm.cpu = a:time().real
+
+   input = input:cuda()
+   target = target:cuda()
+   local g_crit = nn.BCECriterionRTC():cuda()
+   g_crit:forward(input, target)
+   local rescuda = g_crit:backward(input, target)
+   a:reset()
+   for i = 1,nloop do
+      rescuda = g_crit:backward(input, target)
+   end
+   cutorch.synchronize()
+   tm.gpu = a:time().real
+
+   local error = rescuda:double() - groundgrad
+
+   mytester:assertlt(error:abs():max(), precision_backward, 'error on state (backward) ')
+end
+
 mytester:add(cunntest)
 mytester:run()
+
+print_timing = true
+print(times)
+
+   if print_timing then
+       print ''
+       print ' ------------------------------------------------------------------------------------------------'
+       print '|  Module                                                                          |  Speedup    |'
+       print ' ------------------------------------------------------------------------------------------------'
+       for module,tm in pairs(times) do
+           local str = string.format('| %-80s | %4.2f        |', module, (tm.cpu / (tm.gpu or 1e6)))
+           print(str)
+       end
+       print ' ------------------------------------------------------------------------------------------------'
+   end

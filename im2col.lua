@@ -2,6 +2,7 @@ local templet = require 'templet'
 local nvrtc = require 'nvrtc'
 
 local cache = {im2col = {}, col2im = {}}
+local unfolds = {}
 
 local im2col_src = templet.loadstring[[
 #define CUDA_KERNEL_LOOP(i, n)                        \
@@ -85,7 +86,7 @@ local function GET_BLOCKS(N)
   return math.floor((N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS);
 end
 
-function torch.CudaTensor.nn.im2col(dst,src,kW,kH,dW,dH,padW,padH)
+function unfolds.im2col(dst,src,kW,kH,dW,dH,padW,padH)
   assert(src:nDimension() == 3)
   local height = src:size(2)
   local width = src:size(3)
@@ -122,7 +123,7 @@ function torch.CudaTensor.nn.im2col(dst,src,kW,kH,dW,dH,padW,padH)
   return dst
 end
 
-function torch.CudaTensor.nn.col2im(dst,src,kW,kH,dW,dH,padW,padH)
+function unfolds.col2im(dst,src,kW,kH,dW,dH,padW,padH)
   assert(src:nDimension() == 2)
   assert(dst:nDimension() == 3)
   local height = dst:size(2)
@@ -160,3 +161,5 @@ function torch.CudaTensor.nn.col2im(dst,src,kW,kH,dW,dH,padW,padH)
   end
   cutorch.launchPTX(ptx, 'col2im_kernel', {src, dst}, {GET_BLOCKS(n)}, {CUDA_NUM_THREADS})
 end
+
+return unfolds
