@@ -1,5 +1,8 @@
 local BCECriterionRTC, parent = torch.class('nn.BCECriterionRTC', 'nn.BCECriterion')
 
+-- cunn has a fast version now
+
+--[[
 local eps = '1e-12f'
 
 local forward_op = ('x = - logf(x + %s) * y - logf(1.f - x + %s) * (1.f - y)'):format(eps, eps)
@@ -32,3 +35,4 @@ function BCECriterionRTC:updateGradInput(inputs, targets)
    end
    return self.gradInput
 end
+]]
