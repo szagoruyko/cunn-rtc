@@ -13,7 +13,7 @@ local im2col_src = templet.loadstring[[
 // Kernel for fast unfold+copy
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu)
 extern "C"
-__global__ void im2col_kernel(const float* data_im, float* data_col) {
+__global__ void im2col_kernel(const ${Dtype}* data_im, ${Dtype}* data_col) {
   CUDA_KERNEL_LOOP(index, ${n}) {
     int w_out = index % ${width_col};
     index /= ${width_col};
@@ -45,9 +45,9 @@ local col2im_src = templet.loadstring[[
       i += blockDim.x * gridDim.x)
 
 extern "C"
-__global__ void col2im_kernel(const float* data_col, float* data_im) {
+__global__ void col2im_kernel(const ${Dtype}* data_col, ${Dtype}* data_im) {
   CUDA_KERNEL_LOOP(index, ${n}) {
-    float val = 0;
+    ${Dtype} val = 0;
     int w = index % ${width} + ${pad_w};
     int h = (index / ${width}) % ${height} + ${pad_h};
     int c = index / (${width} * ${height});
@@ -75,7 +75,11 @@ __global__ void col2im_kernel(const float* data_col, float* data_im) {
 local function hash(t)
   local s = ''
   for i,v in pairs(t) do
-    s = ('%s,%d'):format(s,v)
+     if type(v) == 'string' then
+        s = s..',v'
+     else
+        s = ('%s,%d'):format(s,v)
+     end
   end
   return s
 end
@@ -84,6 +88,14 @@ local CUDA_NUM_THREADS = 1024
 
 local function GET_BLOCKS(N)
   return math.floor((N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS);
+end
+
+local function getDType(t)
+   if torch.isTypeOf(t, 'torch.CudaTensor') then
+      return 'float'
+   elseif torch.isTypeOf(t, 'torch.CudaDoubleTensor') then
+      return 'double'
+   end
 end
 
 function unfolds.im2col(dst,src,kW,kH,dW,dH,padW,padH)
@@ -98,6 +110,7 @@ function unfolds.im2col(dst,src,kW,kH,dW,dH,padW,padH)
   dst:resize(nInputPlane*kW*kH, height_col*width_col)
 
   local options = {
+     Dtype = getDType(src),
     height_col = height_col,
     width_col = width_col,
     n = n,
@@ -138,6 +151,7 @@ function unfolds.col2im(dst,src,kW,kH,dW,dH,padW,padH)
   assert(src:size(2) == height_col*width_col)
 
   local options = {
+     Dtype = getDType(src),
     height_col = height_col,
     width_col = width_col,
     n = n,

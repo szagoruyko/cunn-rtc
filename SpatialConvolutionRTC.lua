@@ -1,10 +1,6 @@
 local unfolds = require 'cunn-rtc.im2col'
 local SpatialConvolution, parent = torch.class('nn.SpatialConvolutionRTC','nn.SpatialConvolutionMM')
 
-function SpatialConvolution:__init(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW, padH)
-  parent.__init(self,nInputPlane,nOutputPlane,kW,kH,dW,dH,padW,padH)
-end
-
 function SpatialConvolution:getIm2ColParams()
   return self.kW, self.kH, self.dW, self.dH, self.padW, self.padH
 end
